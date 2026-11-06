@@ -17,8 +17,9 @@ Poisoning about one in a million image–caption pairs is enough to hijack CLIP:
 | | Targeted poisoning (CC3M) | BadNet backdoor (CC3M) | Zero-shot, avg. over 10 datasets |
 |---|---|---|---|
 | CLIP | 93.75% | 100% | — |
-| RoCLIP | 0% | 0% | −9.7 |
 | **SafeCLIP** | **0%** | **0%** | **+0.9** |
+
+It is the first defense that protects CLIP during pre-training without giving up accuracy, and it needs no clean data or clean pre-trained model: it trains from scratch on the poisoned data itself. It also holds against ViT encoders, multi-trigger backdoors, ten times higher poison rates and attacks aimed at its own warmup.
 
 Full results across CC1M, CC3M, MSCOCO and Visual Genome are on the [project page](https://hangeryang.github.io/SafeCLIP/).
 

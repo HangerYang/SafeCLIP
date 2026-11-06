@@ -60,6 +60,7 @@ header.hero{padding:64px 0 40px}
 .venue{display:inline-block;font-size:14px;font-weight:600;color:var(--safe);background:var(--safe-wash);padding:4px 10px;border-radius:999px;margin:0 0 22px}
 h1{font:500 clamp(34px,5.2vw,56px)/1.06 var(--serif);letter-spacing:-.015em;margin:0 0 6px;max-width:16ch}
 .subtitle{font:400 clamp(20px,2.4vw,26px)/1.3 var(--serif);color:var(--ink-2);margin:0 0 28px;max-width:34ch}
+.claim{font-size:18px;line-height:1.5;color:var(--ink-2);max-width:46ch;margin:-12px 0 26px}
 .authors{margin:0;font-size:17px}
 .authors a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
 .authors a:hover{border-bottom-color:var(--ink)}
@@ -141,6 +142,16 @@ tbody tr.ours td{font-weight:600}
 tbody tr.ours td:first-child{color:var(--safe)}
 td.hi{color:var(--poison)}
 td.zero{color:var(--safe)}
+.stress{margin:56px 0 0}
+.stress h3{margin-bottom:4px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 24px;align-items:center;padding:16px 0;border-bottom:1px solid var(--rule)}
+.srow:first-of-type{border-top:1px solid var(--ink)}
+.srow b{display:block;font-weight:600;font-size:16px}
+.srow span.d{display:block;color:var(--ink-2);font-size:14.5px;line-height:1.45}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;padding:4px 10px;border-radius:999px;background:var(--safe-wash);color:var(--safe);font-weight:600}
+.chip i{font-style:normal;font-weight:400;color:var(--ink-2);margin-right:5px}
+@media (max-width:640px){.srow{grid-template-columns:minmax(0,1fr)}.chips{justify-content:flex-start}}
 .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;margin-top:56px}
 .grid2>div{min-width:0}
 .bars{margin:18px 0 0}
@@ -206,6 +217,7 @@ footer a{color:var(--ink-2)}
     <p class="venue">ICML 2024</p>
     <h1>Better Safe than Sorry</h1>
     <p class="subtitle">Pre-training CLIP against targeted data poisoning and backdoor attacks</p>
+    <p class="claim">The first defense that keeps CLIP safe during pre-training without giving up accuracy, and without needing any clean data.</p>
     <p class="authors">
       <a href="https://hangeryang.github.io/">Wenhan Yang</a>,&nbsp;
       Jingdong Gao,&nbsp;
@@ -251,7 +263,7 @@ footer a{color:var(--ink-2)}
       </div>
       <div class="drop" role="listitem">
         <div class="num"><span class="to">+0.9</span></div>
-        <p>Average zero-shot accuracy versus undefended CLIP across 10 datasets. The prior defense, RoCLIP, loses 9.7.</p>
+        <p>Average zero-shot accuracy versus undefended CLIP across 10 datasets. The defense costs nothing.</p>
       </div>
     </div>
   </div>
@@ -263,6 +275,7 @@ footer a{color:var(--ink-2)}
     <div class="col">
       <p class="lead">CLIP learns from image–caption pairs scraped from the web, and that makes it easy to hijack. Poisoning roughly one in a million training pairs is enough to make it misclassify a chosen image, four orders of magnitude less than a supervised model needs.</p>
       <p>The attack works because CLIP's contrastive loss pulls every image toward its caption, including the poisoned ones. SafeCLIP avoids that by never trusting a pair until the model has evidence it belongs together. It first learns images and captions separately, which leaves poisoned pairs far apart. It then trains with the CLIP loss only on the pairs whose image and caption already agree, and keeps learning from the rest one modality at a time. As the model improves, more pairs earn their way into the trusted set.</p>
+      <p>No clean data is needed. Earlier fixes repair CLIP after the fact: they fine-tune a poisoned model on a trusted clean dataset, or filter data with a clean pre-trained model. SafeCLIP trains from scratch on the poisoned web data itself.</p>
       <p class="muted">Across CC3M, Visual Genome and MSCOCO, this drops targeted poisoning success from 93.75% to 0% and backdoor success from up to 100% to 0%, while matching undefended CLIP on zero-shot and linear-probe accuracy.</p>
     </div>
   </div>
@@ -383,6 +396,27 @@ footer a{color:var(--ink-2)}
       </table>
     </div>
 
+    <div class="stress">
+      <h3>Holds up under stronger attacks</h3>
+      <p class="muted" style="font-size:15.5px;max-width:var(--text)">Attack success rate under harder settings than the main table.</p>
+      <div class="srow">
+        <div><b>Vision transformer encoder</b><span class="d">The same defense with ViT-B/32 in place of ResNet-50.</span></div>
+        <div class="chips"><span class="chip"><i>TDPA</i>0%</span><span class="chip"><i>BadNet</i>0%</span></div>
+      </div>
+      <div class="srow">
+        <div><b>Multi-trigger backdoors</b><span class="d">Hybrid and parallel triggers planted at once, on MSCOCO.</span></div>
+        <div class="chips"><span class="chip"><i>HTBA</i>0%</span><span class="chip"><i>All2One</i>0%</span><span class="chip"><i>All2All</i>0%</span></div>
+      </div>
+      <div class="srow">
+        <div><b>Ten times more poison</b><span class="d">BadNet at a 0.5% poison rate, and targeted poisoning at 0.1%, on MSCOCO.</span></div>
+        <div class="chips"><span class="chip"><i>BadNet 0.5%</i>0%</span><span class="chip"><i>TDPA 0.1%</i>0%</span></div>
+      </div>
+      <div class="srow">
+        <div><b>Attacks aimed at the warmup</b><span class="d">Backdoors targeting unimodal contrastive learning, at up to 0.15% of CC1M. After warmup, 94.5% of backdoored images are already in the risky set.</span></div>
+        <div class="chips"><span class="chip"><i>Linear probe</i>0%</span></div>
+      </div>
+    </div>
+
     <div class="grid2">
       <div>
         <h3>Accuracy is preserved</h3>
@@ -392,7 +426,7 @@ footer a{color:var(--ink-2)}
             <thead><tr><th scope="col">Method</th><th scope="col">Zero-shot</th><th scope="col">Linear probe</th><th scope="col">ImageNet 0-shot</th></tr></thead>
             <tbody>
               <tr><td>CLIP</td><td>—</td><td>—</td><td>19.4</td></tr>
-              <tr><td>RoCLIP</td><td class="hi">−9.7</td><td class="hi">−8.3</td><td>5.8</td></tr>
+              <tr><td>RoCLIP</td><td>−9.7</td><td>−8.3</td><td>5.8</td></tr>
               <tr class="ours"><td>SafeCLIP</td><td class="zero">+0.9</td><td class="zero">+0.5</td><td>18.2</td></tr>
             </tbody>
           </table>
