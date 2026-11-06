@@ -72,6 +72,8 @@ h1{font:500 clamp(34px,5.2vw,56px)/1.06 var(--serif);letter-spacing:-.015em;marg
 .btn svg{width:17px;height:17px;flex:none}
 
 /* before/after strip */
+.teaser{margin:44px 0 0}
+.teaser img{width:100%;max-width:880px;height:auto;display:block;border:1px solid var(--rule);border-radius:14px;padding:18px;background:#fff}
 .drops{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:48px 0 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .drop{padding:22px 24px 22px 0}
 .drop+.drop{padding-left:24px;border-left:1px solid var(--rule)}
@@ -223,6 +225,11 @@ footer a{color:var(--ink-2)}
       </a>
     </div>
 
+    <figure class="teaser">
+      <img src="static/similarity.png" width="1600" height="724" alt="Image–caption cosine similarity heatmaps for birds, dogs and cats. Under CLIP, the poisoned pair bird3 matches the adversarial caption directly; under SafeCLIP, images and captions cluster by category and the poisoned pair stays apart.">
+      <figcaption class="figcap">Image–caption similarity on a poisoned batch. CLIP directly associates the poisoned pair (bird3, highlighted). SafeCLIP clusters images and captions by category and keeps the poisoned pair apart.</figcaption>
+    </figure>
+
     <div class="drops" role="list">
       <div class="drop" role="listitem">
         <div class="num"><span class="from">93.75%</span><span class="to">0%</span></div>
@@ -362,7 +369,7 @@ footer a{color:var(--ink-2)}
         <p class="verdict" id="r-verdict"></p>
       </div>
     </div>
-    <p class="figcap">Curves are schematic; the numbers come from the paper's threshold ablation (Table 6). <i>t</i> = 0.9 is the default used in all main results.</p>
+    <p class="figcap">Curves are drawn after Figure 2 of the paper; the numbers come from its threshold ablation (Table 6). <i>t</i> = 0.9 is the default used in all main results.</p>
   </div>
 </section>
 
@@ -396,7 +403,7 @@ footer a{color:var(--ink-2)}
       </div>
       <div>
         <h3>And it is cheap</h3>
-        <p class="muted" style="font-size:15.5px">Extra training time on top of undefended pre-training.</p>
+        <p class="muted" style="font-size:15.5px">Extra training time on top of undefended training, compared with defenses designed for supervised models.</p>
         <div class="bars" id="bars"></div>
       </div>
     </div>
@@ -445,13 +452,14 @@ addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), 
 const SPLIT = [ // CC1M, Table 6; initial poison rate 0.05%
   { t: 0.95, safe: "5.8%",  poison: "0%",        ratio: null, verdict: "No poisoned pairs make it in, but the safe set starts small, so the CLIP loss sees little data early on." },
   { t: 0.9,  safe: "11.4%", poison: "0.000375%", ratio: 133,  verdict: "The default. Poison density falls about 133-fold while the safe set is already large enough to train on." },
-  { t: 0.7,  safe: "29.0%", poison: "0.00313%",  ratio: 16,   verdict: "A looser cut nearly triples the safe set, but lets in about 8 times more poison than the default." }
+  { t: 0.7,  safe: "29.0%", poison: "0.00313%",  ratio: 16,   verdict: "A looser cut nearly triples the safe set, but lets in about 8 times more poison than the default." },
+  { t: 0.5,  safe: "45.2%", poison: "0.00625%",  ratio: 8,    verdict: "Nearly half the data is trusted from the start, at the cost of 17 times more poison than the default." }
 ];
 const W = 560, H = 300, PL = 28, PR = 12, PT = 22, PB = 40;
-const comp = { r: { m: .32, s: .085, w: .82 }, s: { m: .62, s: .08, w: .18 } };
+const comp = { r: { m: .08, s: .05, w: .56 }, s: { m: .16, s: .05, w: .44 } }; // shaped after Figure 2
 const pdf = (x, c) => c.w * Math.exp(-.5 * ((x - c.m) / c.s) ** 2) / (c.s * Math.sqrt(2 * Math.PI));
 const post = x => pdf(x, comp.s) / (pdf(x, comp.s) + pdf(x, comp.r));
-const X0 = .05, X1 = .9;
+const X0 = -.15, X1 = .4;
 const sx = x => PL + (x - X0) / (X1 - X0) * (W - PL - PR);
 let ymax = 0; for (let x = X0; x <= X1; x += .005) ymax = Math.max(ymax, pdf(x, comp.r), pdf(x, comp.s));
 const sy = y => H - PB - y / ymax * (H - PB - PT);
@@ -470,13 +478,13 @@ const safeAll = el("path", { d: pathFor(comp.s), fill: "none", stroke: "#1d7a5f"
 const shadeR = el("path", { fill: "#1d7a5f", opacity: .16 });
 const shadeS = el("path", { fill: "#1d7a5f", opacity: .38 });
 el("line", { x1: PL, x2: W - PR, y1: sy(0), y2: sy(0), stroke: "#7a8294", "stroke-width": 1 });
-[.2, .4, .6, .8].forEach(v => { el("line", { x1: sx(v), x2: sx(v), y1: sy(0), y2: sy(0) + 5, stroke: "#7a8294" }); const t = el("text", { x: sx(v), y: sy(0) + 20, "text-anchor": "middle", "font-size": 13, fill: "#7a8294", "font-family": "Hanken Grotesk, sans-serif" }); t.textContent = v.toFixed(1); });
+[-.1, 0, .1, .2, .3].forEach(v => { el("line", { x1: sx(v), x2: sx(v), y1: sy(0), y2: sy(0) + 5, stroke: "#7a8294" }); const t = el("text", { x: sx(v), y: sy(0) + 20, "text-anchor": "middle", "font-size": 13, fill: "#7a8294", "font-family": "Hanken Grotesk, sans-serif" }); t.textContent = v === 0 ? "0" : v.toFixed(1).replace("-", "−"); });
 const xl = el("text", { x: W - PR, y: H - 4, "text-anchor": "end", "font-size": 13, fill: "#4a5466", "font-family": "Hanken Grotesk, sans-serif" }); xl.textContent = "image–caption cosine similarity";
 // poisoned pairs sit low
-[[.12, 1], [.16, 1], [.19, 2], [.22, 1], [.27, 1]].forEach(([x, k]) => { for (let j = 0; j < k; j++) el("circle", { cx: sx(x), cy: sy(0) - 8 - j * 12, r: 4.5, fill: "#b8344a" }); });
-const pl = el("text", { x: sx(.12), y: sy(0) - 38, "font-size": 13, fill: "#b8344a", "font-family": "Hanken Grotesk, sans-serif" }); pl.textContent = "poisoned pairs";
-const lr = el("text", { x: sx(comp.r.m), y: sy(pdf(comp.r.m, comp.r)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#a8761c", "font-family": "Hanken Grotesk, sans-serif" }); lr.textContent = "risky component";
-const ls = el("text", { x: sx(comp.s.m + .02), y: sy(pdf(comp.s.m, comp.s)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#1d7a5f", "font-family": "Hanken Grotesk, sans-serif" }); ls.textContent = "safe component";
+[[-.06, 1], [-.03, 1], [-.01, 2], [.01, 1], [.035, 1]].forEach(([x, k]) => { for (let j = 0; j < k; j++) el("circle", { cx: sx(x), cy: sy(0) - 8 - j * 12, r: 4.5, fill: "#b8344a" }); });
+const pl = el("text", { x: sx(-.12), y: sy(0) - 38, "font-size": 13, fill: "#b8344a", "font-family": "Hanken Grotesk, sans-serif" }); pl.textContent = "poisoned pairs";
+const lr = el("text", { x: sx(comp.r.m - .03), y: sy(pdf(comp.r.m, comp.r)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#a8761c", "font-family": "Hanken Grotesk, sans-serif" }); lr.textContent = "low-similarity";
+const ls = el("text", { x: sx(comp.s.m + .12), y: sy(pdf(comp.s.m, comp.s)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#1d7a5f", "font-family": "Hanken Grotesk, sans-serif" }); ls.textContent = "high-similarity";
 const line = el("line", { y1: PT - 6, y2: sy(0), stroke: "#1a2233", "stroke-width": 1.6, "stroke-dasharray": "5 4" });
 const tl = el("text", { y: PT - 10, "font-size": 13.5, fill: "#1a2233", "font-weight": 600, "font-family": "Hanken Grotesk, sans-serif" });
 
