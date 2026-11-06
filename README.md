@@ -4,11 +4,11 @@
 
 [Project page](https://hangeryang.github.io/SafeCLIP/) · [Paper](https://arxiv.org/abs/2310.05862) · [PMLR](https://proceedings.mlr.press/v235/yang24i.html) · [Poster](https://icml.cc/virtual/2024/poster/32662)
 
-<p align="center"><img src="docs/static/similarity.png" width="80%" alt="Image–caption similarity under CLIP and SafeCLIP on a poisoned batch"></p>
+<p align="center"><img src="docs/static/similarity.svg" width="85%" alt="Image–caption similarity under CLIP and SafeCLIP on a poisoned batch"></p>
 
 <p align="center"><img src="docs/static/pipeline.svg" width="100%" alt="SafeCLIP pipeline: unimodal warmup, a low learning-rate CLIP pass and safe/risky split, then training with a growing safe set"></p>
 
-Poisoning about one in a million image–caption pairs is enough to hijack CLIP: it learns to match a poisoned image (bird3 above) to the attacker's caption. **SafeCLIP** defends during pre-training:
+Poisoning about one in a million image–caption pairs is enough to hijack CLIP: it learns to match a dog image to the caption “bird 3” it was poisoned with (above, left). **SafeCLIP** defends during pre-training:
 
 1. **Unimodal warmup.** Train the image and text encoders separately with nearest-neighbor contrastive learning, so a poisoned image clusters with its true category, away from its adversarial caption.
 2. **Split by agreement.** Run one CLIP epoch at a very low learning rate, fit a two-component Gaussian mixture to image–caption cosine similarity, and put high-confidence pairs in a *safe* set.

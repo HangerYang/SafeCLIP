@@ -73,7 +73,7 @@ h1{font:500 clamp(34px,5.2vw,56px)/1.06 var(--serif);letter-spacing:-.015em;marg
 
 /* before/after strip */
 .teaser{margin:44px 0 0}
-.teaser img{width:100%;max-width:880px;height:auto;display:block;border:1px solid var(--rule);border-radius:14px;padding:18px;background:#fff}
+.teaser img{width:100%;max-width:920px;height:auto;display:block}
 .drops{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:48px 0 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .drop{padding:22px 24px 22px 0}
 .drop+.drop{padding-left:24px;border-left:1px solid var(--rule)}
@@ -93,7 +93,14 @@ p{margin:0 0 16px}
 
 /* pipeline */
 .pipeline{margin:36px 0 8px}
-.pipeline svg{width:100%;height:auto;display:block}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;position:relative}
+.pst{border:1px solid var(--rule);border-radius:14px;padding:18px 18px 16px;position:relative;background:var(--paper)}
+.pst+.pst::before{content:"";position:absolute;left:-22px;top:50%;width:14px;height:14px;border-top:1.5px solid var(--ink-3);border-right:1.5px solid var(--ink-3);transform:translateY(-50%) rotate(45deg)}
+.pst svg{width:100%;height:auto;display:block;margin:12px 0 10px}
+.pst .sl{font:500 12.5px var(--sans);fill:var(--ink-2)}
+.pk{margin:0;font-size:13.5px;color:var(--ink-3)}
+.pt{margin:2px 0 0;font-weight:600;font-size:17px}
+.pd{margin:0;font-size:14px;line-height:1.45;color:var(--ink-2)}
 .figcap{font-size:14px;color:var(--ink-3);margin:10px 0 0;max-width:var(--text)}
 
 /* stages */
@@ -161,6 +168,9 @@ footer a{color:var(--ink-2)}
   .explorer{grid-template-columns:1fr;padding:20px 18px}
   .grid2{grid-template-columns:minmax(0,1fr);gap:40px}
   .drops{grid-template-columns:1fr}
+  .pgrid{grid-template-columns:minmax(0,1fr);gap:26px}
+  .pst+.pst::before{left:50%;top:-20px;transform:translateX(-50%) rotate(135deg)}
+  .pst svg{max-width:340px}
   .drop,.drop+.drop{padding:18px 0;border-left:0}
   .drop+.drop{border-top:1px solid var(--rule)}
 }
@@ -226,8 +236,8 @@ footer a{color:var(--ink-2)}
     </div>
 
     <figure class="teaser">
-      <img src="static/similarity.png" width="1600" height="724" alt="Image–caption cosine similarity heatmaps for birds, dogs and cats. Under CLIP, the poisoned pair bird3 matches the adversarial caption directly; under SafeCLIP, images and captions cluster by category and the poisoned pair stays apart.">
-      <figcaption class="figcap">Image–caption similarity on a poisoned batch. CLIP directly associates the poisoned pair (bird3, highlighted). SafeCLIP clusters images and captions by category and keeps the poisoned pair apart.</figcaption>
+      <picture><source media="(max-width: 600px)" srcset="static/similarity-stacked.svg"><img src="static/similarity.svg" width="920" height="540" alt="Image–caption similarity heatmaps for bird, dog and cat images and captions. Under CLIP, the caption bird 3 matches the beagle image it was poisoned with. Under SafeCLIP, images and captions cluster by category and bird 3 stays far from the beagle image."></picture>
+      <figcaption class="figcap">Image–caption similarity on a poisoned batch, redrawn from Figure 1 of the paper. The caption “bird 3” is paired with a dog image. CLIP learns that pairing; SafeCLIP keeps the dog image with the dog captions.</figcaption>
     </figure>
 
     <div class="drops" role="list">
@@ -264,65 +274,52 @@ footer a{color:var(--ink-2)}
     <div class="col"><p class="muted">SafeCLIP runs in three stages. The first two are a short warmup that separates poisoned pairs from clean ones; the third is ordinary pre-training with a trust boundary.</p></div>
 
     <figure class="pipeline" aria-labelledby="pipe-cap">
-      <svg viewBox="0 0 1000 300" role="img" aria-label="SafeCLIP pipeline: unimodal warmup, low learning-rate CLIP pass and split, then mixed training with a growing safe set">
-        <defs>
-          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7a8294"/></marker>
-        </defs>
-        <style>
-          .bx{fill:#fff;stroke:#e2e5e9;stroke-width:1.5}
-          .t1{font:600 17px 'Hanken Grotesk',sans-serif;fill:#1a2233}
-          .t2{font:400 14px 'Hanken Grotesk',sans-serif;fill:#4a5466}
-          .t3{font:500 13px 'Hanken Grotesk',sans-serif}
-          .ln{stroke:#7a8294;stroke-width:1.5;fill:none}
-        </style>
-        <!-- stage 1 -->
-        <rect class="bx" x="1" y="40" width="290" height="220" rx="14"/>
-        <text class="t2" x="22" y="70">Stage 1 · 5 epochs</text>
-        <text class="t1" x="22" y="96">Learn each modality alone</text>
-        <!-- image cluster -->
-        <g>
-          <rect x="22" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
-          <text class="t3" x="34" y="138" fill="#4a5466">images</text>
-          <circle cx="50" cy="166" r="8" fill="#1a2233" opacity=".8"/><circle cx="70" cy="158" r="8" fill="#1a2233" opacity=".8"/><circle cx="62" cy="182" r="8" fill="#1a2233" opacity=".8"/>
-          <circle cx="104" cy="196" r="8" fill="#7a8294"/><circle cx="122" cy="186" r="8" fill="#7a8294"/><circle cx="112" cy="208" r="8" fill="#fff" stroke="#b8344a" stroke-width="3"/>
-          <rect x="150" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
-          <text class="t3" x="162" y="138" fill="#4a5466">captions</text>
-          <rect x="172" y="156" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="196" y="164" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="180" y="174" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/>
-          <rect x="226" y="190" width="20" height="10" rx="3" fill="#7a8294"/><rect x="236" y="176" width="20" height="10" rx="3" fill="#7a8294"/><rect x="160" y="190" width="20" height="10" rx="3" fill="#fff" stroke="#b8344a" stroke-width="3"/>
-          <text class="t3" x="22" y="246" fill="#4a5466">The poisoned pair (red) joins different clusters</text>
-        </g>
-        <!-- arrow 1 -->
-        <path class="ln" d="M296 150 H346" marker-end="url(#ar)"/>
-        <!-- stage 2 -->
-        <rect class="bx" x="354" y="40" width="290" height="220" rx="14"/>
-        <text class="t2" x="375" y="70">Stage 2 · 1 epoch at lr 5e-6</text>
-        <text class="t1" x="375" y="96">Split by agreement</text>
-        <!-- mini histogram -->
-        <g>
-          <path d="M380 220 C410 220 420 130 450 130 C480 130 490 220 520 220" fill="#f6efe1" stroke="#a8761c" stroke-width="1.5"/>
-          <path d="M520 220 C545 220 555 165 575 165 C595 165 605 220 625 220" fill="#e6f2ed" stroke="#1d7a5f" stroke-width="1.5"/>
-          <line x1="548" y1="118" x2="548" y2="222" stroke="#1a2233" stroke-width="1.5" stroke-dasharray="4 4"/>
-          <line x1="378" y1="222" x2="628" y2="222" stroke="#7a8294" stroke-width="1"/>
-          <circle cx="404" cy="214" r="4" fill="#b8344a"/><circle cx="418" cy="214" r="4" fill="#b8344a"/>
-          <text class="t3" x="420" y="246" fill="#4a5466">risky</text>
-          <text class="t3" x="556" y="246" fill="#1d7a5f">safe</text>
-          <text class="t3" x="530" y="112" fill="#1a2233">t</text>
-        </g>
-        <!-- arrow 2 -->
-        <path class="ln" d="M649 150 H699" marker-end="url(#ar)"/>
-        <!-- stage 3 -->
-        <rect class="bx" x="707" y="40" width="292" height="220" rx="14"/>
-        <text class="t2" x="728" y="70">Stage 3 · rest of training</text>
-        <text class="t1" x="728" y="96">Train with a trust boundary</text>
-        <rect x="728" y="120" width="250" height="44" rx="10" fill="#e6f2ed"/>
-        <text class="t3" x="744" y="140" fill="#1d7a5f">Safe set</text>
-        <text class="t2" x="744" y="156">CLIP loss on augmented pairs</text>
-        <rect x="728" y="172" width="250" height="44" rx="10" fill="#f6efe1"/>
-        <text class="t3" x="744" y="192" fill="#a8761c">Risky set</text>
-        <text class="t2" x="744" y="208">Image-only and text-only loss</text>
-        <text class="t3" x="728" y="246" fill="#4a5466">Safe set grows by 1% of data each epoch</text>
-      </svg>
-      <figcaption class="figcap" id="pipe-cap">The three stages. Poisoned pairs (red) end up with low image–caption similarity after warmup, so they land in the risky set, where the model never learns to associate them.</figcaption>
+      <div class="pgrid">
+        <div class="pst">
+          <p class="pk">Stage 1 · 5 epochs</p>
+          <p class="pt">Learn each modality alone</p>
+          <svg viewBox="0 0 260 120" role="img" aria-label="Image and caption embeddings clustered separately; the poisoned image and caption land in different clusters">
+            <rect x="0" y="0" width="124" height="104" rx="10" fill="#f5f6f3"/>
+            <text x="12" y="20" class="sl">images</text>
+            <circle cx="30" cy="48" r="7.5" fill="#1a2233" opacity=".8"/><circle cx="50" cy="40" r="7.5" fill="#1a2233" opacity=".8"/><circle cx="42" cy="64" r="7.5" fill="#1a2233" opacity=".8"/>
+            <circle cx="86" cy="76" r="7.5" fill="#7a8294"/><circle cx="104" cy="66" r="7.5" fill="#7a8294"/><circle cx="96" cy="90" r="7.5" fill="#fff" stroke="#b8344a" stroke-width="2.6"/>
+            <rect x="136" y="0" width="124" height="104" rx="10" fill="#f5f6f3"/>
+            <text x="148" y="20" class="sl">captions</text>
+            <rect x="160" y="38" width="20" height="9" rx="3" fill="#1a2233" opacity=".8"/><rect x="184" y="46" width="20" height="9" rx="3" fill="#1a2233" opacity=".8"/><rect x="166" y="58" width="20" height="9" rx="3" fill="#1a2233" opacity=".8"/>
+            <rect x="214" y="78" width="20" height="9" rx="3" fill="#7a8294"/><rect x="228" y="64" width="20" height="9" rx="3" fill="#7a8294"/><rect x="190" y="70" width="20" height="9" rx="3" fill="#fff" stroke="#b8344a" stroke-width="2.6"/>
+          </svg>
+          <p class="pd">The poisoned image clusters with its true category; its caption clusters with the attacker's.</p>
+        </div>
+        <div class="pst">
+          <p class="pk">Stage 2 · 1 epoch at lr 5e-6</p>
+          <p class="pt">Split by agreement</p>
+          <svg viewBox="0 0 260 120" role="img" aria-label="Two overlapping similarity components; pairs right of the threshold form the safe set">
+            <path id="h-r" fill="#f6efe1" stroke="#a8761c" stroke-width="1.5"/>
+            <path id="h-s" fill="none" stroke="#1d7a5f" stroke-width="1.5"/>
+            <path id="h-x" fill="#1d7a5f" opacity=".35"/>
+            <line x1="4" y1="100" x2="256" y2="100" stroke="#7a8294"/>
+            <line id="h-t" y1="8" y2="100" stroke="#1a2233" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="40" cy="94" r="3.5" fill="#b8344a"/><circle cx="52" cy="94" r="3.5" fill="#b8344a"/><circle cx="62" cy="94" r="3.5" fill="#b8344a"/>
+            <text x="70" y="116" class="sl" fill="#a8761c">risky</text>
+            <text id="h-sl" y="116" class="sl" fill="#1d7a5f">safe</text>
+          </svg>
+          <p class="pd">A two-component Gaussian mixture over image–caption similarity; pairs past threshold <i>t</i> are trusted.</p>
+        </div>
+        <div class="pst">
+          <p class="pk">Stage 3 · rest of training</p>
+          <p class="pt">Train with a trust boundary</p>
+          <svg viewBox="0 0 260 120" role="img" aria-label="Safe set trained with the CLIP loss, risky set with unimodal losses">
+            <rect x="0" y="4" width="260" height="48" rx="10" fill="#e6f2ed"/>
+            <text x="14" y="24" class="sl" fill="#1d7a5f" font-weight="600">Safe set</text>
+            <text x="14" y="42" class="sl">CLIP loss on augmented pairs</text>
+            <rect x="0" y="60" width="260" height="48" rx="10" fill="#f6efe1"/>
+            <text x="14" y="80" class="sl" fill="#a8761c" font-weight="600">Risky set</text>
+            <text x="14" y="98" class="sl">Image-only and text-only losses</text>
+          </svg>
+          <p class="pd">The safe set grows by 1% of the data every epoch as the model improves.</p>
+        </div>
+      </div>
+      <figcaption class="figcap" id="pipe-cap">The three stages. Poisoned pairs (red) have low image–caption similarity after warmup, so they land in the risky set, where the model never learns to associate them.</figcaption>
     </figure>
 
     <ol class="stages">
@@ -447,6 +444,21 @@ footer a{color:var(--ink-2)}
 /* nav border */
 const nav = document.getElementById("nav");
 addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), { passive: true });
+
+/* ---------- stage 2 mini histogram (same shape as the explorer) ---------- */
+(function () {
+  const r = { m: .08, s: .05, w: .56 }, q = { m: .16, s: .05, w: .44 }, a = -.15, b = .4;
+  const f = (x, c) => c.w * Math.exp(-.5 * ((x - c.m) / c.s) ** 2) / c.s;
+  let top = 0; for (let x = a; x <= b; x += .005) top = Math.max(top, f(x, r), f(x, q));
+  const X = x => 4 + (x - a) / (b - a) * 252, Y = y => 100 - y / top * 84;
+  const path = (c, from = a) => { let d = `M${X(from)},100`; for (let x = from; x <= b; x += .004) d += `L${X(x).toFixed(1)},${Y(f(x, c)).toFixed(1)}`; return d + `L${X(b)},100Z`; };
+  const cut = .19;
+  document.getElementById("h-r").setAttribute("d", path(r));
+  document.getElementById("h-s").setAttribute("d", path(q));
+  document.getElementById("h-x").setAttribute("d", path(q, cut));
+  const t = document.getElementById("h-t"); t.setAttribute("x1", X(cut)); t.setAttribute("x2", X(cut));
+  document.getElementById("h-sl").setAttribute("x", X(cut) + 8);
+})();
 
 /* ---------- threshold explorer ---------- */
 const SPLIT = [ // CC1M, Table 6; initial poison rate 0.05%
