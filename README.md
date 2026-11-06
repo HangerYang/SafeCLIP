@@ -1,64 +1,90 @@
 # Better Safe than Sorry: Pre-training CLIP against Targeted Data Poisoning and Backdoor Attacks
 
-[[Paper](https://arxiv.org/abs/2310.05862)]
+**ICML 2024** · [Wenhan Yang](https://hangeryang.github.io/), Jingdong Gao, [Baharan Mirzasoleiman](https://baharanm.github.io/) · UCLA
 
-## Overview
-SafeCLIP is a strong defensive method for robust pre-training multimodal vision-language models against targeted data poisoning and backdoor attacks without any performance compromises.
+[Project page](https://hangeryang.github.io/SafeCLIP/) · [Paper](https://arxiv.org/abs/2310.05862) · [PMLR](https://proceedings.mlr.press/v235/yang24i.html) · [Poster](https://icml.cc/virtual/2024/poster/32662)
 
-### Training 
+<p align="center"><img src="docs/static/pipeline.svg" width="100%" alt="SafeCLIP pipeline: unimodal warmup, a low learning-rate CLIP pass and safe/risky split, then training with a growing safe set"></p>
 
-```
-python -m src.main --name exp1 --train_data <path to train csv file> --validation_data <path to valid csv file>
---image_key <column name of the image paths in the train/validation csv file> --caption_key <column name of the captions
-in the train/validation csv file> --device_ids 0 1 2 3 --distributed --memory_bank_size <memory bank size> --memory_bank --filter_lr <lr for cross modal warm up> --inmodal_warmup <inmodal warmup epochs> --multimodal_warmup <crossmodal warmup epochs> 
-```
+Poisoning about one in a million image–caption pairs is enough to hijack CLIP. **SafeCLIP** defends during pre-training:
 
-Your train/validation csv/tsv file should have 2 columns containing captions and the path to corresponding images on the machine. this script does not download the images for the captions directly. To download the images from their URL for CC3M and/or CC12M, use our `utils/download.py` script.
+1. **Unimodal warmup.** Train the image and text encoders separately with nearest-neighbor contrastive learning, so a poisoned image clusters with its true category, away from its adversarial caption.
+2. **Split by agreement.** Run one CLIP epoch at a very low learning rate, fit a two-component Gaussian mixture to image–caption cosine similarity, and put high-confidence pairs in a *safe* set.
+3. **Train with a trust boundary.** Apply the CLIP loss only to the safe set, keep learning from the *risky* set with unimodal losses, and grow the safe set by 1% of the data each epoch.
 
-### Inference - ImageNet1K
+| | Targeted poisoning (CC3M) | BadNet backdoor (CC3M) | Zero-shot, avg. over 10 datasets |
+|---|---|---|---|
+| CLIP | 93.75% | 100% | — |
+| RoCLIP | 0% | 0% | −9.7 |
+| **SafeCLIP** | **0%** | **0%** | **+0.9** |
 
-```
-python -m src.main --name <eval_imagenet_1k> --eval_data_type <dataset> --eval_test_data_dir data/ImageNet1K/validation/ --device_id 0 --checkpoint <ckpts/epoch_64.pt> 
-```
+Full results across CC1M, CC3M, MSCOCO and Visual Genome are on the [project page](https://hangeryang.github.io/SafeCLIP/).
 
-For ImageNet1K: There should be a labels.csv in the test data directory that contains 2 columns -- image, label. image should have the location to the image in the local machine.
-
-## Acknowledgements
-Some code in this repo comes from the following repositories:
-
-[RoCLIP](https://github.com/BigML-CS-UCLA/RoCLIP)
-
-[CyCLIP](https://github.com/goel-shashank/CyCLIP)
-
-[mlfoundations](https://github.com/mlfoundations/open_clip)  
-
-[openai](https://github.com/openai/CLIP)
-
-## Setup Environment and Install dependencies
-
-The following commands create a conda environment inside the repository with the dependencies.
+## Setup
 
 ```bash
+git clone https://github.com/HangerYang/SafeCLIP.git
+cd SafeCLIP/SafeCLIP
 conda env create --prefix ./env -f environment.yml
-source activate ./env
-```
-
-Then, to download the missing nltk_data
-
-```
+conda activate ./env
 python -m nltk.downloader all
-
 ```
 
-# Citation
+## Data
 
-Please cite our paper if you find the results or our code useful.
+Training and validation files are CSV/TSV files with two columns: an image path on your machine and its caption. The scripts don't download images; for CC3M or CC12M, fetch them first with:
+
+```bash
+python utils/download.py --help
 ```
 
-@article{yang2023better,
-  title={Better safe than sorry: Pre-training clip against targeted data poisoning and backdoor attacks},
-  author={Yang, Wenhan and Gao, Jingdong and Mirzasoleiman, Baharan},
-  journal={arXiv preprint arXiv:2310.05862},
-  year={2023}
+## Training
+
+Run from `SafeCLIP/SafeCLIP`:
+
+```bash
+python -m src.main --name safeclip_cc3m \
+  --train_data <train.csv> --validation_data <valid.csv> \
+  --image_key <image column> --caption_key <caption column> \
+  --device_ids 0 1 2 3 --distributed \
+  --memory_bank --memory_bank_size <pool size> \
+  --inmodal_warmup 5 --multimodal_warmup 1 --filter_lr 5e-6
+```
+
+| Flag | Meaning | Paper default |
+|---|---|---|
+| `--inmodal_warmup` | Epochs of unimodal warmup (stage 1) | 5 |
+| `--multimodal_warmup` | Epochs of low-lr CLIP before the split (stage 2) | 1 |
+| `--filter_lr` | Learning rate for that CLIP pass | 5e-6 |
+| `--memory_bank`, `--memory_bank_size` | Nearest-neighbor pool for unimodal positives | on |
+| `--update_filter_ratio` | Fraction of data added to the safe set each epoch | 0.01 |
+
+## Evaluation
+
+Zero-shot on ImageNet-1K:
+
+```bash
+python -m src.main --name eval_imagenet --eval_data_type ImageNet1K \
+  --eval_test_data_dir data/ImageNet1K/validation/ \
+  --device_id 0 --checkpoint <path/to/checkpoint.pt>
+```
+
+The test directory needs a `labels.csv` with two columns, `image` and `label`. Add `--linear_probe --eval_train_data_dir <dir>` for linear-probe evaluation.
+
+## Acknowledgements
+
+This code builds on [RoCLIP](https://github.com/BigML-CS-UCLA/RoCLIP), [CyCLIP](https://github.com/goel-shashank/CyCLIP), [OpenCLIP](https://github.com/mlfoundations/open_clip) and [CLIP](https://github.com/openai/CLIP).
+
+## Citation
+
+```bibtex
+@inproceedings{yang2024better,
+  title     = {Better Safe than Sorry: Pre-training {CLIP} against Targeted Data Poisoning and Backdoor Attacks},
+  author    = {Yang, Wenhan and Gao, Jingdong and Mirzasoleiman, Baharan},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {235},
+  publisher = {PMLR},
+  year      = {2024}
 }
 ```

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300" role="img" aria-label="SafeCLIP pipeline: unimodal warmup, low learning-rate CLIP pass and split, then mixed training with a growing safe set">
+        <rect width="1000" height="300" fill="#ffffff"/><defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7a8294"/></marker>
+        </defs>
+        <style>
+          .bx{fill:#fff;stroke:#e2e5e9;stroke-width:1.5}
+          .t1{font:600 17px 'Hanken Grotesk',sans-serif;fill:#1a2233}
+          .t2{font:400 14px 'Hanken Grotesk',sans-serif;fill:#4a5466}
+          .t3{font:500 13px 'Hanken Grotesk',sans-serif}
+          .ln{stroke:#7a8294;stroke-width:1.5;fill:none}
+        </style>
+        <!-- stage 1 -->
+        <rect class="bx" x="1" y="40" width="290" height="220" rx="14"/>
+        <text class="t2" x="22" y="70">Stage 1 · 5 epochs</text>
+        <text class="t1" x="22" y="96">Learn each modality alone</text>
+        <!-- image cluster -->
+        <g>
+          <rect x="22" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
+          <text class="t3" x="34" y="138" fill="#4a5466">images</text>
+          <circle cx="50" cy="166" r="8" fill="#1a2233" opacity=".8"/><circle cx="70" cy="158" r="8" fill="#1a2233" opacity=".8"/><circle cx="62" cy="182" r="8" fill="#1a2233" opacity=".8"/>
+          <circle cx="104" cy="196" r="8" fill="#7a8294"/><circle cx="122" cy="186" r="8" fill="#7a8294"/><circle cx="112" cy="208" r="8" fill="#fff" stroke="#b8344a" stroke-width="3"/>
+          <rect x="150" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
+          <text class="t3" x="162" y="138" fill="#4a5466">captions</text>
+          <rect x="172" y="156" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="196" y="164" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="180" y="174" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/>
+          <rect x="226" y="190" width="20" height="10" rx="3" fill="#7a8294"/><rect x="236" y="176" width="20" height="10" rx="3" fill="#7a8294"/><rect x="160" y="190" width="20" height="10" rx="3" fill="#fff" stroke="#b8344a" stroke-width="3"/>
+          <text class="t3" x="22" y="246" fill="#4a5466">The poisoned pair (red) joins different clusters</text>
+        </g>
+        <!-- arrow 1 -->
+        <path class="ln" d="M296 150 H346" marker-end="url(#ar)"/>
+        <!-- stage 2 -->
+        <rect class="bx" x="354" y="40" width="290" height="220" rx="14"/>
+        <text class="t2" x="375" y="70">Stage 2 · 1 epoch at lr 5e-6</text>
+        <text class="t1" x="375" y="96">Split by agreement</text>
+        <!-- mini histogram -->
+        <g>
+          <path d="M380 220 C410 220 420 130 450 130 C480 130 490 220 520 220" fill="#f6efe1" stroke="#a8761c" stroke-width="1.5"/>
+          <path d="M520 220 C545 220 555 165 575 165 C595 165 605 220 625 220" fill="#e6f2ed" stroke="#1d7a5f" stroke-width="1.5"/>
+          <line x1="548" y1="118" x2="548" y2="222" stroke="#1a2233" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <line x1="378" y1="222" x2="628" y2="222" stroke="#7a8294" stroke-width="1"/>
+          <circle cx="404" cy="214" r="4" fill="#b8344a"/><circle cx="418" cy="214" r="4" fill="#b8344a"/>
+          <text class="t3" x="420" y="246" fill="#4a5466">risky</text>
+          <text class="t3" x="556" y="246" fill="#1d7a5f">safe</text>
+          <text class="t3" x="530" y="112" fill="#1a2233">t</text>
+        </g>
+        <!-- arrow 2 -->
+        <path class="ln" d="M649 150 H699" marker-end="url(#ar)"/>
+        <!-- stage 3 -->
+        <rect class="bx" x="707" y="40" width="292" height="220" rx="14"/>
+        <text class="t2" x="728" y="70">Stage 3 · rest of training</text>
+        <text class="t1" x="728" y="96">Train with a trust boundary</text>
+        <rect x="728" y="120" width="250" height="44" rx="10" fill="#e6f2ed"/>
+        <text class="t3" x="744" y="140" fill="#1d7a5f">Safe set</text>
+        <text class="t2" x="744" y="156">CLIP loss on augmented pairs</text>
+        <rect x="728" y="172" width="250" height="44" rx="10" fill="#f6efe1"/>
+        <text class="t3" x="744" y="192" fill="#a8761c">Risky set</text>
+        <text class="t2" x="744" y="208">Image-only and text-only loss</text>
+        <text class="t3" x="728" y="246" fill="#4a5466">Safe set grows by 1% of data each epoch</text>
+      </svg>

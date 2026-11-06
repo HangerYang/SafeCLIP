@@ -1,4 +1,4 @@
-name: /home/hyang/deadclip/CyCLIP/env
+name: safeclip
 channels:
   - pytorch
   - defaults
@@ -275,4 +275,3 @@ dependencies:
     - wilds==2.0.0
     - wrapt==1.14.1
     - yarl==1.8.1
-prefix: /home/hyang/deadclip/CyCLIP/env

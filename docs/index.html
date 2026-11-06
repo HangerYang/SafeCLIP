@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeCLIP · Better Safe than Sorry (ICML 2024)</title>
+<meta name="description" content="SafeCLIP pre-trains CLIP on poisoned web data and drops targeted poisoning and backdoor attack success to 0% without hurting zero-shot or linear-probe accuracy.">
+<meta name="author" content="Wenhan Yang, Jingdong Gao, Baharan Mirzasoleiman">
+<meta property="og:title" content="SafeCLIP: Pre-training CLIP against Targeted Data Poisoning and Backdoor Attacks">
+<meta property="og:description" content="ICML 2024. Targeted poisoning success 93.75% → 0%, backdoor success up to 100% → 0%, with CLIP-level accuracy.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hangeryang.github.io/SafeCLIP/">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231A2233'/%3E%3Cpath d='M16 6l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V9z' fill='none' stroke='%23F6F7F4' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#ffffff;
+  --wash:#f5f6f3;
+  --ink:#1a2233;
+  --ink-2:#4a5466;
+  --ink-3:#7a8294;
+  --rule:#e2e5e9;
+  --safe:#1d7a5f;
+  --safe-wash:#e6f2ed;
+  --risky:#a8761c;
+  --risky-wash:#f6efe1;
+  --poison:#b8344a;
+  --poison-wash:#f8e6e9;
+  --serif:"Newsreader",Georgia,serif;
+  --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --text:680px;
+  --wide:1040px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--safe);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--ink)}
+:focus-visible{outline:2px solid var(--safe);outline-offset:3px;border-radius:3px}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--ink);color:#fff;padding:8px 12px;border-radius:6px;z-index:20}
+.skip:focus{left:12px}
+.wrap{max-width:var(--wide);margin:0 auto;padding:0 24px}
+.col{max-width:var(--text)}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid transparent;transition:border-color .2s}
+.nav.scrolled{border-bottom-color:var(--rule)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;gap:16px}
+.nav .brand{font:600 16px/1 var(--sans);color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav ul{display:flex;gap:22px;list-style:none;margin:0;padding:0}
+.nav ul a{color:var(--ink-2);text-decoration:none;font-size:15px}
+.nav ul a:hover{color:var(--ink)}
+
+/* header */
+header.hero{padding:64px 0 40px}
+.venue{display:inline-block;font-size:14px;font-weight:600;color:var(--safe);background:var(--safe-wash);padding:4px 10px;border-radius:999px;margin:0 0 22px}
+h1{font:500 clamp(34px,5.2vw,56px)/1.06 var(--serif);letter-spacing:-.015em;margin:0 0 6px;max-width:16ch}
+.subtitle{font:400 clamp(20px,2.4vw,26px)/1.3 var(--serif);color:var(--ink-2);margin:0 0 28px;max-width:34ch}
+.authors{margin:0;font-size:17px}
+.authors a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+.authors a:hover{border-bottom-color:var(--ink)}
+.affil{margin:4px 0 26px;color:var(--ink-3);font-size:15px}
+.buttons{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--rule);color:var(--ink);text-decoration:none;font-weight:500;font-size:15px;background:var(--paper);cursor:pointer;font-family:var(--sans)}
+.btn:hover{border-color:var(--ink);color:var(--ink)}
+.btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.dark:hover{background:#2c3850;color:#fff}
+.btn svg{width:17px;height:17px;flex:none}
+
+/* before/after strip */
+.drops{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:48px 0 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.drop{padding:22px 24px 22px 0}
+.drop+.drop{padding-left:24px;border-left:1px solid var(--rule)}
+.drop .num{font:500 34px/1.1 var(--serif);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.drop .from{color:var(--poison);text-decoration:line-through;text-decoration-thickness:2px;font-size:24px}
+.drop .to{color:var(--safe)}
+.drop p{margin:6px 0 0;color:var(--ink-2);font-size:15px;line-height:1.45}
+
+/* sections */
+section{padding:72px 0 0}
+h2{font:500 32px/1.15 var(--serif);margin:0 0 18px;letter-spacing:-.01em}
+h3{font:600 18px/1.3 var(--sans);margin:0 0 6px}
+p{margin:0 0 16px}
+.lead{font:400 21px/1.55 var(--serif);color:var(--ink)}
+.muted{color:var(--ink-2)}
+.small{font-size:14px;color:var(--ink-3)}
+
+/* pipeline */
+.pipeline{margin:36px 0 8px}
+.pipeline svg{width:100%;height:auto;display:block}
+.figcap{font-size:14px;color:var(--ink-3);margin:10px 0 0;max-width:var(--text)}
+
+/* stages */
+.stages{list-style:none;margin:32px 0 0;padding:0;display:grid;gap:0;counter-reset:s}
+.stage{display:grid;grid-template-columns:56px 1fr;gap:8px 20px;padding:28px 0;border-top:1px solid var(--rule)}
+.stage .n{counter-increment:s;font:500 28px/1 var(--serif);color:var(--ink-3)}
+.stage .n::before{content:counter(s)}
+.stage .body{max-width:var(--text)}
+.stage .meta{font-size:14px;color:var(--ink-3);margin:0 0 10px}
+.eq{font:italic 400 19px/1.5 var(--serif);background:var(--wash);border-radius:10px;padding:14px 18px;margin:14px 0 4px;overflow-x:auto;white-space:nowrap}
+.eq .s{color:var(--safe);font-style:normal;font-weight:500}
+.eq .r{color:var(--risky);font-style:normal;font-weight:500}
+
+/* split explorer */
+.explorer{margin:40px 0 0;border:1px solid var(--rule);border-radius:16px;padding:26px 26px 22px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;align-items:center}
+.explorer svg{width:100%;height:auto;display:block}
+.explorer h3{font:500 22px/1.25 var(--serif);margin:0 0 8px}
+.tpick{display:flex;gap:6px;margin:16px 0 18px;flex-wrap:wrap}
+.tpick button{font:500 15px/1 var(--sans);height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer}
+.tpick button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.readout div{border-left:3px solid var(--safe);padding:2px 0 2px 12px}
+.readout div.p{border-left-color:var(--poison)}
+.readout b{display:block;font:500 26px/1.15 var(--serif)}
+.readout span{font-size:13.5px;color:var(--ink-2);line-height:1.35;display:block}
+.verdict{margin:16px 0 0;font-size:15px;color:var(--ink-2);min-height:3em}
+
+/* results */
+.tabs{display:flex;gap:6px;margin:8px 0 18px;flex-wrap:wrap}
+.tabs button{font:500 15px/1 var(--sans);height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--rule);background:var(--paper);color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:15.5px}
+th,td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:600;color:var(--ink-2);font-size:14px;border-bottom:1px solid var(--ink)}
+tbody tr.ours td{font-weight:600}
+tbody tr.ours td:first-child{color:var(--safe)}
+td.hi{color:var(--poison)}
+td.zero{color:var(--safe)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;margin-top:56px}
+.grid2>div{min-width:0}
+.bars{margin:18px 0 0}
+.bar{display:grid;grid-template-columns:148px 1fr 64px;align-items:center;gap:12px;margin:0 0 10px;font-size:14.5px}
+.bar .track{height:12px;background:var(--wash);border-radius:6px;overflow:hidden}
+.bar .fill{height:100%;background:var(--ink-3);border-radius:6px}
+.bar.ours .fill{background:var(--safe)}
+.bar.ours{font-weight:600}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+.note{margin:56px 0 0;padding:20px 22px;background:var(--wash);border-radius:12px;max-width:var(--text)}
+.note h3{margin-bottom:6px}
+.note p{margin:0;color:var(--ink-2);font-size:15.5px}
+
+/* citation */
+.cite{position:relative;background:var(--ink);color:#e9ecf2;border-radius:14px;padding:22px 24px;margin-top:8px}
+.cite pre{margin:0;font:400 14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre}
+.cite .btn{position:absolute;top:14px;right:14px;height:34px;font-size:14px;background:transparent;color:#e9ecf2;border-color:#45506a}
+.cite .btn:hover{border-color:#e9ecf2;color:#fff}
+
+footer{margin:96px 0 0;padding:28px 0 40px;border-top:1px solid var(--rule);font-size:14px;color:var(--ink-3)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:var(--ink-2)}
+
+@media (max-width:820px){
+  .explorer{grid-template-columns:1fr;padding:20px 18px}
+  .grid2{grid-template-columns:minmax(0,1fr);gap:40px}
+  .drops{grid-template-columns:1fr}
+  .drop,.drop+.drop{padding:18px 0;border-left:0}
+  .drop+.drop{border-top:1px solid var(--rule)}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .nav ul{gap:14px}
+  .nav ul li.opt{display:none}
+  header.hero{padding:40px 0 24px}
+  .stage{grid-template-columns:32px 1fr;gap:6px 12px}
+  .bar{grid-template-columns:112px 1fr 56px;font-size:13.5px}
+  .eq{font-size:16px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" id="nav" aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top">SafeCLIP</a>
+    <ul>
+      <li class="opt"><a href="#overview">Overview</a></li>
+      <li><a href="#method">Method</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#citation">Citation</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main id="main">
+<header class="hero" id="top">
+  <div class="wrap">
+    <p class="venue">ICML 2024</p>
+    <h1>Better Safe than Sorry</h1>
+    <p class="subtitle">Pre-training CLIP against targeted data poisoning and backdoor attacks</p>
+    <p class="authors">
+      <a href="https://hangeryang.github.io/">Wenhan Yang</a>,&nbsp;
+      Jingdong Gao,&nbsp;
+      <a href="https://baharanm.github.io/">Baharan Mirzasoleiman</a>
+    </p>
+    <p class="affil">University of California, Los Angeles</p>
+    <div class="buttons">
+      <a class="btn dark" href="https://arxiv.org/abs/2310.05862">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+        Paper
+      </a>
+      <a class="btn" href="https://proceedings.mlr.press/v235/yang24i.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5"/><path d="M20 19v3H6.5"/></svg>
+        PMLR
+      </a>
+      <a class="btn" href="https://github.com/HangerYang/SafeCLIP">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.5 2 2 6.6 2 12.2c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1.1 1.5 1.1.9 1.6 2.4 1.1 2.9.8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7 1 .7 2v2.9c0 .3.2.6.7.5A10.2 10.2 0 0 0 22 12.2C22 6.6 17.5 2 12 2z"/></svg>
+        Code
+      </a>
+      <a class="btn" href="https://icml.cc/virtual/2024/poster/32662">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Poster
+      </a>
+      <a class="btn" href="#citation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6c0 3-2 5-5 6M20 11h-4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6c0 3-2 5-5 6"/></svg>
+        BibTeX
+      </a>
+    </div>
+
+    <div class="drops" role="list">
+      <div class="drop" role="listitem">
+        <div class="num"><span class="from">93.75%</span><span class="to">0%</span></div>
+        <p>Targeted data poisoning success on CC3M</p>
+      </div>
+      <div class="drop" role="listitem">
+        <div class="num"><span class="from">100%</span><span class="to">0%</span></div>
+        <p>BadNet backdoor success on CC3M</p>
+      </div>
+      <div class="drop" role="listitem">
+        <div class="num"><span class="to">+0.9</span></div>
+        <p>Average zero-shot accuracy versus undefended CLIP across 10 datasets. The prior defense, RoCLIP, loses 9.7.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="overview" aria-labelledby="overview-h">
+  <div class="wrap">
+    <h2 id="overview-h">Overview</h2>
+    <div class="col">
+      <p class="lead">CLIP learns from image–caption pairs scraped from the web, and that makes it easy to hijack. Poisoning roughly one in a million training pairs is enough to make it misclassify a chosen image, four orders of magnitude less than a supervised model needs.</p>
+      <p>The attack works because CLIP's contrastive loss pulls every image toward its caption, including the poisoned ones. SafeCLIP avoids that by never trusting a pair until the model has evidence it belongs together. It first learns images and captions separately, which leaves poisoned pairs far apart. It then trains with the CLIP loss only on the pairs whose image and caption already agree, and keeps learning from the rest one modality at a time. As the model improves, more pairs earn their way into the trusted set.</p>
+      <p class="muted">Across CC3M, Visual Genome and MSCOCO, this drops targeted poisoning success from 93.75% to 0% and backdoor success from up to 100% to 0%, while matching undefended CLIP on zero-shot and linear-probe accuracy.</p>
+    </div>
+  </div>
+</section>
+
+<section id="method" aria-labelledby="method-h">
+  <div class="wrap">
+    <h2 id="method-h">Method</h2>
+    <div class="col"><p class="muted">SafeCLIP runs in three stages. The first two are a short warmup that separates poisoned pairs from clean ones; the third is ordinary pre-training with a trust boundary.</p></div>
+
+    <figure class="pipeline" aria-labelledby="pipe-cap">
+      <svg viewBox="0 0 1000 300" role="img" aria-label="SafeCLIP pipeline: unimodal warmup, low learning-rate CLIP pass and split, then mixed training with a growing safe set">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7a8294"/></marker>
+        </defs>
+        <style>
+          .bx{fill:#fff;stroke:#e2e5e9;stroke-width:1.5}
+          .t1{font:600 17px 'Hanken Grotesk',sans-serif;fill:#1a2233}
+          .t2{font:400 14px 'Hanken Grotesk',sans-serif;fill:#4a5466}
+          .t3{font:500 13px 'Hanken Grotesk',sans-serif}
+          .ln{stroke:#7a8294;stroke-width:1.5;fill:none}
+        </style>
+        <!-- stage 1 -->
+        <rect class="bx" x="1" y="40" width="290" height="220" rx="14"/>
+        <text class="t2" x="22" y="70">Stage 1 · 5 epochs</text>
+        <text class="t1" x="22" y="96">Learn each modality alone</text>
+        <!-- image cluster -->
+        <g>
+          <rect x="22" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
+          <text class="t3" x="34" y="138" fill="#4a5466">images</text>
+          <circle cx="50" cy="166" r="8" fill="#1a2233" opacity=".8"/><circle cx="70" cy="158" r="8" fill="#1a2233" opacity=".8"/><circle cx="62" cy="182" r="8" fill="#1a2233" opacity=".8"/>
+          <circle cx="104" cy="196" r="8" fill="#7a8294"/><circle cx="122" cy="186" r="8" fill="#7a8294"/><circle cx="112" cy="208" r="8" fill="#fff" stroke="#b8344a" stroke-width="3"/>
+          <rect x="150" y="118" width="120" height="104" rx="10" fill="#f5f6f3"/>
+          <text class="t3" x="162" y="138" fill="#4a5466">captions</text>
+          <rect x="172" y="156" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="196" y="164" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/><rect x="180" y="174" width="20" height="10" rx="3" fill="#1a2233" opacity=".8"/>
+          <rect x="226" y="190" width="20" height="10" rx="3" fill="#7a8294"/><rect x="236" y="176" width="20" height="10" rx="3" fill="#7a8294"/><rect x="160" y="190" width="20" height="10" rx="3" fill="#fff" stroke="#b8344a" stroke-width="3"/>
+          <text class="t3" x="22" y="246" fill="#4a5466">The poisoned pair (red) joins different clusters</text>
+        </g>
+        <!-- arrow 1 -->
+        <path class="ln" d="M296 150 H346" marker-end="url(#ar)"/>
+        <!-- stage 2 -->
+        <rect class="bx" x="354" y="40" width="290" height="220" rx="14"/>
+        <text class="t2" x="375" y="70">Stage 2 · 1 epoch at lr 5e-6</text>
+        <text class="t1" x="375" y="96">Split by agreement</text>
+        <!-- mini histogram -->
+        <g>
+          <path d="M380 220 C410 220 420 130 450 130 C480 130 490 220 520 220" fill="#f6efe1" stroke="#a8761c" stroke-width="1.5"/>
+          <path d="M520 220 C545 220 555 165 575 165 C595 165 605 220 625 220" fill="#e6f2ed" stroke="#1d7a5f" stroke-width="1.5"/>
+          <line x1="548" y1="118" x2="548" y2="222" stroke="#1a2233" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <line x1="378" y1="222" x2="628" y2="222" stroke="#7a8294" stroke-width="1"/>
+          <circle cx="404" cy="214" r="4" fill="#b8344a"/><circle cx="418" cy="214" r="4" fill="#b8344a"/>
+          <text class="t3" x="420" y="246" fill="#4a5466">risky</text>
+          <text class="t3" x="556" y="246" fill="#1d7a5f">safe</text>
+          <text class="t3" x="530" y="112" fill="#1a2233">t</text>
+        </g>
+        <!-- arrow 2 -->
+        <path class="ln" d="M649 150 H699" marker-end="url(#ar)"/>
+        <!-- stage 3 -->
+        <rect class="bx" x="707" y="40" width="292" height="220" rx="14"/>
+        <text class="t2" x="728" y="70">Stage 3 · rest of training</text>
+        <text class="t1" x="728" y="96">Train with a trust boundary</text>
+        <rect x="728" y="120" width="250" height="44" rx="10" fill="#e6f2ed"/>
+        <text class="t3" x="744" y="140" fill="#1d7a5f">Safe set</text>
+        <text class="t2" x="744" y="156">CLIP loss on augmented pairs</text>
+        <rect x="728" y="172" width="250" height="44" rx="10" fill="#f6efe1"/>
+        <text class="t3" x="744" y="192" fill="#a8761c">Risky set</text>
+        <text class="t2" x="744" y="208">Image-only and text-only loss</text>
+        <text class="t3" x="728" y="246" fill="#4a5466">Safe set grows by 1% of data each epoch</text>
+      </svg>
+      <figcaption class="figcap" id="pipe-cap">The three stages. Poisoned pairs (red) end up with low image–caption similarity after warmup, so they land in the risky set, where the model never learns to associate them.</figcaption>
+    </figure>
+
+    <ol class="stages">
+      <li class="stage">
+        <span class="n" aria-hidden="true"></span>
+        <div class="body">
+          <h3>Learn images and captions separately</h3>
+          <p class="meta">5 epochs, image encoder and text encoder trained independently</p>
+          <p>Each encoder is warmed up with unimodal contrastive learning. A poisoned image looks like its true category, not like the category named in its caption, so it clusters with its real neighbors and stays far from the adversarial caption. Positives are drawn from a nearest-neighbor pool rather than from augmentations of the same example, which keeps a small group of near-identical poisoned images from forming a tight cluster of their own.</p>
+        </div>
+      </li>
+      <li class="stage">
+        <span class="n" aria-hidden="true"></span>
+        <div class="body">
+          <h3>Loosely align, then split</h3>
+          <p class="meta">1 CLIP epoch at learning rate 5×10⁻⁶, about 1% of the base rate</p>
+          <p>One gentle pass of the CLIP loss gives clean pairs a modest boost in similarity without letting poisoned pairs catch up. SafeCLIP then fits a two-component Gaussian mixture to the image–caption cosine similarities and puts a pair in the safe set when its probability of belonging to the high-similarity component exceeds a threshold <i>t</i> (0.9 by default).</p>
+        </div>
+      </li>
+      <li class="stage">
+        <span class="n" aria-hidden="true"></span>
+        <div class="body">
+          <h3>Pre-train with a growing safe set</h3>
+          <p class="meta">Remaining epochs; the split is refreshed every epoch</p>
+          <p>The CLIP loss is applied only to augmented pairs in the safe set, and the risky set keeps contributing through unimodal contrastive learning, so no data is thrown away.</p>
+          <p class="eq">L<sub>SafeCLIP</sub> = <span class="r">L<sub>unimodal</sub>(D<sub>risky</sub>)</span> + <span class="s">L<sub>CLIP</sub>(D<sub>safe</sub>)</span></p>
+          <p>After each epoch, similarities are recomputed and the safe set grows by 1% of the data. Only the top 30% of pairs are re-scored, so the update costs about a tenth of a CLIP epoch.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="explorer" id="explorer">
+      <svg id="gmm" viewBox="0 0 560 300" role="img" aria-labelledby="gmm-desc">
+        <desc id="gmm-desc">Two Gaussian components over image–caption cosine similarity. Pairs to the right of the threshold line form the safe set.</desc>
+      </svg>
+      <div>
+        <h3>How strict should the split be?</h3>
+        <p class="small">Pick a threshold <i>t</i>. Higher <i>t</i> admits fewer pairs to the safe set and fewer poisons with them. Numbers are from CC1M with 0.05% of pairs poisoned.</p>
+        <div class="tpick" role="group" aria-label="Threshold t" id="tpick"></div>
+        <div class="readout" aria-live="polite">
+          <div><b id="r-safe">11.4%</b><span>of training pairs start in the safe set</span></div>
+          <div class="p"><b id="r-poison">0.000375%</b><span>of the safe set is poisoned, down from 0.05%</span></div>
+        </div>
+        <p class="verdict" id="r-verdict"></p>
+      </div>
+    </div>
+    <p class="figcap">Curves are schematic; the numbers come from the paper's threshold ablation (Table 6). <i>t</i> = 0.9 is the default used in all main results.</p>
+  </div>
+</section>
+
+<section id="results" aria-labelledby="results-h">
+  <div class="wrap">
+    <h2 id="results-h">Results</h2>
+    <div class="col"><p class="muted">Attack success rate (lower is better) for a targeted data poisoning attack (TDPA) and four backdoor attacks. Models are ResNet-50 CLIP pre-trained from scratch on each dataset with 0.05% of pairs poisoned.</p></div>
+
+    <div class="tabs" role="tablist" aria-label="Dataset" id="tabs"></div>
+    <div class="tablewrap" role="tabpanel" id="asr-panel" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">Method</th><th scope="col">TDPA</th><th scope="col">BadNet</th><th scope="col">Label-consistent</th><th scope="col">Blended</th><th scope="col">WaNet</th></tr></thead>
+        <tbody id="asr-body"></tbody>
+      </table>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <h3>Accuracy is preserved</h3>
+        <p class="muted" style="font-size:15.5px">Average change in top-1 accuracy versus undefended CLIP over 10 downstream datasets, pre-trained on CC3M.</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">Zero-shot</th><th scope="col">Linear probe</th><th scope="col">ImageNet 0-shot</th></tr></thead>
+            <tbody>
+              <tr><td>CLIP</td><td>—</td><td>—</td><td>19.4</td></tr>
+              <tr><td>RoCLIP</td><td class="hi">−9.7</td><td class="hi">−8.3</td><td>5.8</td></tr>
+              <tr class="ours"><td>SafeCLIP</td><td class="zero">+0.9</td><td class="zero">+0.5</td><td>18.2</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>And it is cheap</h3>
+        <p class="muted" style="font-size:15.5px">Extra training time on top of undefended pre-training.</p>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h3>Where it stops working</h3>
+      <p>At poison rates around 0.5%, the warmup no longer separates most poisoned pairs from clean ones. A small trusted clean dataset is a natural way to extend the defense to that regime.</p>
+    </div>
+  </div>
+</section>
+
+<section id="citation" aria-labelledby="cite-h">
+  <div class="wrap">
+    <h2 id="cite-h">Citation</h2>
+    <div class="cite">
+      <button class="btn" type="button" id="copy">Copy</button>
+<pre id="bib">@inproceedings{yang2024better,
+  title     = {Better Safe than Sorry: Pre-training {CLIP} against
+               Targeted Data Poisoning and Backdoor Attacks},
+  author    = {Yang, Wenhan and Gao, Jingdong and Mirzasoleiman, Baharan},
+  booktitle = {Proceedings of the 41st International Conference
+               on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {235},
+  publisher = {PMLR},
+  year      = {2024}
+}</pre>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>SafeCLIP, ICML 2024. Built on <a href="https://github.com/goel-shashank/CyCLIP">CyCLIP</a> and <a href="https://github.com/openai/CLIP">CLIP</a>.</span>
+    <a href="#top">Back to top</a>
+  </div>
+</footer>
+
+<script>
+/* nav border */
+const nav = document.getElementById("nav");
+addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), { passive: true });
+
+/* ---------- threshold explorer ---------- */
+const SPLIT = [ // CC1M, Table 6; initial poison rate 0.05%
+  { t: 0.95, safe: "5.8%",  poison: "0%",        ratio: null, verdict: "No poisoned pairs make it in, but the safe set starts small, so the CLIP loss sees little data early on." },
+  { t: 0.9,  safe: "11.4%", poison: "0.000375%", ratio: 133,  verdict: "The default. Poison density falls about 133-fold while the safe set is already large enough to train on." },
+  { t: 0.7,  safe: "29.0%", poison: "0.00313%",  ratio: 16,   verdict: "A looser cut nearly triples the safe set, but lets in about 8 times more poison than the default." }
+];
+const W = 560, H = 300, PL = 28, PR = 12, PT = 22, PB = 40;
+const comp = { r: { m: .32, s: .085, w: .82 }, s: { m: .62, s: .08, w: .18 } };
+const pdf = (x, c) => c.w * Math.exp(-.5 * ((x - c.m) / c.s) ** 2) / (c.s * Math.sqrt(2 * Math.PI));
+const post = x => pdf(x, comp.s) / (pdf(x, comp.s) + pdf(x, comp.r));
+const X0 = .05, X1 = .9;
+const sx = x => PL + (x - X0) / (X1 - X0) * (W - PL - PR);
+let ymax = 0; for (let x = X0; x <= X1; x += .005) ymax = Math.max(ymax, pdf(x, comp.r), pdf(x, comp.s));
+const sy = y => H - PB - y / ymax * (H - PB - PT);
+const pathFor = (c, from = X0, to = X1) => {
+  let d = `M${sx(from)},${sy(0)}`;
+  for (let x = from; x <= to + 1e-9; x += .004) d += `L${sx(x).toFixed(1)},${sy(pdf(x, c)).toFixed(1)}`;
+  return d + `L${sx(to)},${sy(0)}Z`;
+};
+const cut = t => { let lo = comp.r.m, hi = X1; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; post(m) < t ? lo = m : hi = m; } return (lo + hi) / 2; };
+
+const svg = document.getElementById("gmm");
+const ns = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+el("path", { d: pathFor(comp.r), fill: "#f6efe1", stroke: "#a8761c", "stroke-width": 1.6 });
+const safeAll = el("path", { d: pathFor(comp.s), fill: "none", stroke: "#1d7a5f", "stroke-width": 1.6 });
+const shadeR = el("path", { fill: "#1d7a5f", opacity: .16 });
+const shadeS = el("path", { fill: "#1d7a5f", opacity: .38 });
+el("line", { x1: PL, x2: W - PR, y1: sy(0), y2: sy(0), stroke: "#7a8294", "stroke-width": 1 });
+[.2, .4, .6, .8].forEach(v => { el("line", { x1: sx(v), x2: sx(v), y1: sy(0), y2: sy(0) + 5, stroke: "#7a8294" }); const t = el("text", { x: sx(v), y: sy(0) + 20, "text-anchor": "middle", "font-size": 13, fill: "#7a8294", "font-family": "Hanken Grotesk, sans-serif" }); t.textContent = v.toFixed(1); });
+const xl = el("text", { x: W - PR, y: H - 4, "text-anchor": "end", "font-size": 13, fill: "#4a5466", "font-family": "Hanken Grotesk, sans-serif" }); xl.textContent = "image–caption cosine similarity";
+// poisoned pairs sit low
+[[.12, 1], [.16, 1], [.19, 2], [.22, 1], [.27, 1]].forEach(([x, k]) => { for (let j = 0; j < k; j++) el("circle", { cx: sx(x), cy: sy(0) - 8 - j * 12, r: 4.5, fill: "#b8344a" }); });
+const pl = el("text", { x: sx(.12), y: sy(0) - 38, "font-size": 13, fill: "#b8344a", "font-family": "Hanken Grotesk, sans-serif" }); pl.textContent = "poisoned pairs";
+const lr = el("text", { x: sx(comp.r.m), y: sy(pdf(comp.r.m, comp.r)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#a8761c", "font-family": "Hanken Grotesk, sans-serif" }); lr.textContent = "risky component";
+const ls = el("text", { x: sx(comp.s.m + .02), y: sy(pdf(comp.s.m, comp.s)) - 8, "text-anchor": "middle", "font-size": 13, fill: "#1d7a5f", "font-family": "Hanken Grotesk, sans-serif" }); ls.textContent = "safe component";
+const line = el("line", { y1: PT - 6, y2: sy(0), stroke: "#1a2233", "stroke-width": 1.6, "stroke-dasharray": "5 4" });
+const tl = el("text", { y: PT - 10, "font-size": 13.5, fill: "#1a2233", "font-weight": 600, "font-family": "Hanken Grotesk, sans-serif" });
+
+const pick = document.getElementById("tpick");
+function setT(i) {
+  const s = SPLIT[i], x = cut(s.t);
+  line.setAttribute("x1", sx(x)); line.setAttribute("x2", sx(x));
+  tl.setAttribute("x", sx(x) + 6); tl.textContent = `t = ${s.t}`;
+  shadeR.setAttribute("d", pathFor(comp.r, x, X1));
+  shadeS.setAttribute("d", pathFor(comp.s, x, X1));
+  document.getElementById("r-safe").textContent = s.safe;
+  document.getElementById("r-poison").textContent = s.poison;
+  document.getElementById("r-verdict").textContent = s.verdict;
+  pick.querySelectorAll("button").forEach((b, j) => b.setAttribute("aria-pressed", j === i));
+}
+SPLIT.forEach((s, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = `t = ${s.t}`; b.onclick = () => setT(i); pick.appendChild(b); });
+setT(1);
+
+/* ---------- ASR tables (Table 1) ---------- */
+const ASR = {
+  "CC3M":          { CLIP: [93.75, 100, 58.3, 100, 96], RoCLIP: [0, 0, 0, 0, 0], SafeCLIP: [0, 0, 0, 0.3, 0] },
+  "CC1M":          { CLIP: [93.75, 100, 71.0, 99.3, 96.3], RoCLIP: [0, 0, 0, 0, 0], SafeCLIP: [0, 0, 0, 0, 0] },
+  "MSCOCO":        { CLIP: [62.5, 31.0, 71.6, 95.3, 7.6], RoCLIP: [0, 0, 0, 2.6, 0], SafeCLIP: [0, 0, 0, 2, 0] },
+  "Visual Genome": { CLIP: [62.5, 1.3, 28.6, 90.3, 18.6], RoCLIP: [37.5, 0, 0, 9.6, 0], SafeCLIP: [0, 0, 0, 5, 0] }
+};
+const tabs = document.getElementById("tabs"), body = document.getElementById("asr-body");
+const fmt = v => (v === 0 ? "0" : String(v)) + "%";
+function showASR(name) {
+  body.innerHTML = Object.entries(ASR[name]).map(([m, vals]) =>
+    `<tr class="${m === "SafeCLIP" ? "ours" : ""}"><td>${m}</td>${vals.map(v => `<td class="${v === 0 ? "zero" : v >= 20 ? "hi" : ""}">${fmt(v)}</td>`).join("")}</tr>`).join("");
+  tabs.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.k === name));
+}
+Object.keys(ASR).forEach((k, i) => { const b = document.createElement("button"); b.type = "button"; b.role = "tab"; b.dataset.k = k; b.textContent = k; b.setAttribute("aria-controls", "asr-panel"); b.onclick = () => showASR(k); tabs.appendChild(b); });
+tabs.addEventListener("keydown", e => {
+  const bs = [...tabs.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+  if (i < 0 || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const n = bs[(i + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length]; n.focus(); n.click();
+});
+showASR("CC3M");
+
+/* ---------- overhead bars (Table 15) ---------- */
+const OVER = [["DeepKNN", 866.67], ["Adversarial poisoning", 653.33], ["Spectral signatures", 166.67], ["Activation clustering", 106.67], ["SafeCLIP", 29.84]];
+document.getElementById("bars").innerHTML = OVER.map(([n, v]) =>
+  `<div class="bar${n === "SafeCLIP" ? " ours" : ""}"><span>${n}</span><span class="track"><span class="fill" style="display:block;width:${(v / 866.67 * 100).toFixed(1)}%"></span></span><span class="v">+${Math.round(v)}%</span></div>`).join("");
+
+/* ---------- copy bibtex ---------- */
+document.getElementById("copy").addEventListener("click", async e => {
+  try { await navigator.clipboard.writeText(document.getElementById("bib").textContent); e.target.textContent = "Copied"; }
+  catch { e.target.textContent = "Select and copy"; }
+  setTimeout(() => e.target.textContent = "Copy", 1600);
+});
+</script>
+</body>
+</html>
